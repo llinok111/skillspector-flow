@@ -2,6 +2,13 @@
 
 **Security scanner for AI agent skills.** Detect vulnerabilities, malicious patterns, and security risks before installing agent skills.
 
+> **Fork notice.** This repository is a derivative of [NVIDIA/skillspector](https://github.com/NVIDIA/skillspector)
+> (Apache-2.0). It keeps the upstream scanner intact and adds one command,
+> `skillspector flow`, which audits **instruction-level data flow**: a sensitive
+> source, an outbound destination, and the instruction that connects them -
+> including prose that never reaches a shell command, and packs where the
+> collector and the sender live in different skills. See [docs/FLOW.md](docs/FLOW.md).
+
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -19,6 +26,7 @@ SkillSpector is part of the [NVIDIA Verified Skills pipeline](https://docs.nvidi
 - **[Development guide](docs/DEVELOPMENT.md)** — Architecture, package layout, and how to extend the analyzer pipeline.
 - **[Analysis resource bounds](docs/ANALYSIS_RESOURCE_BOUNDS.md)** — Fail-closed bundle, parser, nested-artifact, ledger, and finding ceilings.
 - **[Pi extension](docs/PI_EXTENSION.md)** — Install SkillSpector as a Pi tool for scanning skills from inside agent sessions.
+- **[Instruction-level flow audit](docs/FLOW.md)** — What `skillspector flow` models, the rules it applies, and the measured comparison against the pattern layer.
 - **[OpenCode extension](docs/OPENCODE_EXTENSION.md)** — Install SkillSpector as an OpenCode tool and `/skillspector` command for scanning skills from inside agent sessions.
 
 ## Features
@@ -30,6 +38,7 @@ SkillSpector is part of the [NVIDIA Verified Skills pipeline](https://docs.nvidi
 - **Multiple output formats**: Terminal, JSON, Markdown, and SARIF reports
 - **Risk scoring**: 0-100 score with severity labels and clear recommendations
 - **Baseline / false-positive suppression**: Accept known findings via a glob-rule or fingerprint baseline so re-scans surface only *new* issues ([docs](docs/SUPPRESSION.md))
+- **Instruction-level flow audit**: Pair a sensitive source with an outbound destination in prose, in shell/Python/JS, and across the skills of one pack (`skillspector flow`, [docs](docs/FLOW.md))
 
 ## Quick Start
 
@@ -152,6 +161,29 @@ SkillSpector enforces two independent caps on remote and archive inputs to bound
 - **Zip member cap**: `INGEST_MAX_ZIP_MEMBERS` (10,000) — caps the number of entries in a single zip.
 
 Note that the per-file 1 MB analysis cap (`MAX_FILE_BYTES`) is a separate, downstream limit: it bounds what individual analyzers will read out of an already-ingested directory. The ingest caps above bound how much content can land on disk in the first place. A breach of either ingest cap fails closed with an `IngestLimitExceededError`.
+
+### Instruction-level flow audit
+
+Pattern rules match risky strings. `flow` reports a risky *relationship*: a
+sensitive source, a network destination, and the instruction that moves one to
+the other. Prose counts, because the agent executes prose.
+
+```bash
+# Audit one skill (prose + code), report flows at MEDIUM or above
+skillspector flow ./my-skill/
+
+# Machine-readable, for CI
+skillspector flow ./my-skill/ --format json > flow.json
+
+# Audit a pack: collectors and senders in different skills
+skillspector flow ./my-skills/ --bundle
+
+# Only fail on HIGH
+skillspector flow ./my-skill/ --min-severity high
+```
+
+Exit codes: `0` no flow at or above the threshold, `1` flow found, `2` usage
+error, `3` inspection incomplete (a resource ceiling was hit).
 
 ### Output Formats
 

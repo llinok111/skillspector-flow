@@ -1,3 +1,10 @@
+## Fork additions
+
+### Unreleased
+
+### Features/Bug Fixes
+* feat(flow): add `skillspector flow`, an instruction-level data-flow audit. It reports a sensitive source, an outbound destination, and the instruction that connects them - in prose (`F1` same sentence, `F2` anaphora), in shell/Python/JS (`F3`), and across the skills of one pack (`F4`, `--bundle`). Deterministic: no LLM, no network, no execution. Exit codes are a contract (`0` clean, `1` flow, `2` usage error, `3` incomplete). `src/` of the upstream scanner is unchanged; the command is additive. See `docs/FLOW.md` for the model, the measured comparison against the pattern layer (14/14 flows detected, 10 of which score `0` there), and the false-positive measurement on 545 published skills (0 findings).
+
 ### 2.12.0 (Unreleased)
 ### Features/Bug Fixes
 * fix(sc8): count only the bytecode walk's own CPU time against its 5 s budget, so time spent waiting behind concurrent analyzers no longer reports a static `runtime_limit` for skills that ship no bytecode (#828)

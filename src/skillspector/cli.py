@@ -3375,6 +3375,123 @@ def _scan_multi_skill(
 
 
 @app.command()
+def flow(
+    target: Annotated[
+        str,
+        typer.Argument(
+            help="Skill directory, single file, or a directory of skills for --bundle.",
+        ),
+    ],
+    format: Annotated[
+        FormatChoice,
+        typer.Option(
+            "--format",
+            "-f",
+            help="Output format (terminal, json, markdown).",
+            case_sensitive=False,
+        ),
+    ] = FormatChoice.terminal,
+    min_severity: Annotated[
+        str,
+        typer.Option(
+            "--min-severity",
+            help="Lowest severity to report and to fail on (low, medium, high).",
+            case_sensitive=False,
+        ),
+    ] = "medium",
+    bundle: Annotated[
+        bool,
+        typer.Option(
+            "--bundle",
+            help="Treat the target as a skill pack and report cross-skill chains.",
+        ),
+    ] = False,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Write the report to this file instead of stdout.",
+        ),
+    ] = None,
+) -> None:
+    """
+    Audit instruction-level data flow: sensitive source, network destination,
+    and the instruction that connects them.
+
+    Pattern scanning answers "does this text contain a risky string?". This
+    command answers "does this skill move something sensitive somewhere?" -
+    including prose that never reaches a shell command, and including packs
+    where the collector and the sender live in different skills.
+
+    Exit codes: 0 clean, 1 flow found, 2 usage error, 3 inspection incomplete.
+    """
+    from skillspector.flow import analyze_bundle, analyze_path
+    from skillspector.flow.report import (
+        bundle_exit_code,
+        exit_code,
+        render_bundle_json,
+        render_bundle_terminal,
+        render_json,
+        render_markdown,
+        render_terminal,
+    )
+
+    minimum = min_severity.casefold()
+    if minimum not in {"low", "medium", "high"}:
+        err_console.print(
+            "[red]Error:[/red] --min-severity must be one of low, medium, high."
+        )
+        raise typer.Exit(code=2)
+    if format is FormatChoice.sarif:
+        err_console.print("[red]Error:[/red] --format sarif is not supported for flow.")
+        raise typer.Exit(code=2)
+
+    path = Path(target).expanduser()
+    if not path.exists():
+        err_console.print(f"[red]Error:[/red] no such path: {path}")
+        raise typer.Exit(code=2)
+
+    minimum_key = minimum.upper()
+
+    if bundle:
+        bundle_report = analyze_bundle(path)
+        if format is FormatChoice.json:
+            payload = json.dumps(
+                render_bundle_json(bundle_report, minimum_key), indent=2, ensure_ascii=False
+            )
+        else:
+            payload = render_bundle_terminal(bundle_report, minimum_key)
+        code = bundle_exit_code(bundle_report, minimum_key)
+    else:
+        report = analyze_path(path)
+        if format is FormatChoice.json:
+            payload = json.dumps(render_json(report, minimum_key), indent=2, ensure_ascii=False)
+        elif format is FormatChoice.markdown:
+            payload = render_markdown(report, minimum_key)
+        else:
+            payload = render_terminal(report, minimum_key)
+        code = exit_code(report, minimum_key)
+
+    if output is not None:
+        from skillspector.file_output import require_secure_file_output
+
+        try:
+            require_secure_file_output()
+        except ValueError as exc:
+            err_console.print(f"[red]Error:[/red] {exc}")
+            raise typer.Exit(code=2) from exc
+        write_text_no_follow(output, payload if payload.endswith("\n") else payload + "\n")
+        err_console.print(f"[green]Flow report saved to:[/green] {output}")
+    elif format is FormatChoice.terminal:
+        console.print(payload, markup=False, emoji=False, soft_wrap=True)
+    else:
+        sys.stdout.write(payload if payload.endswith("\n") else payload + "\n")
+
+    raise typer.Exit(code=code)
+
+
+@app.command()
 def mcp(
     transport: Annotated[
         TransportChoice,
