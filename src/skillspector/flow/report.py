@@ -154,7 +154,7 @@ def render_bundle_terminal(report: BundleReport, minimum: str = "MEDIUM") -> str
     order = {"NONE": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
     per_skill = [r for _, r in report.skills]
     total = sum(len(r.findings) for r in per_skill)
-    header = "  " + "skill".ljust(28) + "findings".rjust(8) + "  highest"
+    header = "  " + "skill".ljust(28) + " " + "findings".rjust(8) + "  highest"
     lines = [
         "Flow audit: skill pack",
         f"  target     {report.target}",
