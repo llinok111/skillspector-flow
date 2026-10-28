@@ -52,7 +52,9 @@ def test_source_text_has_no_leading_delimiters(text: str, expected: str) -> None
 
 
 def test_secret_environment_variables_are_sources() -> None:
-    found = {atom.text for atom in lexicon.find_sources("export GITHUB_TOKEN and AWS_SECRET_ACCESS_KEY")}
+    found = {
+        atom.text for atom in lexicon.find_sources("export GITHUB_TOKEN and AWS_SECRET_ACCESS_KEY")
+    }
     assert found == {"GITHUB_TOKEN", "AWS_SECRET_ACCESS_KEY"}
 
 

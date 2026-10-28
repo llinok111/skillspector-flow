@@ -3439,9 +3439,7 @@ def flow(
 
     minimum = min_severity.casefold()
     if minimum not in {"low", "medium", "high"}:
-        err_console.print(
-            "[red]Error:[/red] --min-severity must be one of low, medium, high."
-        )
+        err_console.print("[red]Error:[/red] --min-severity must be one of low, medium, high.")
         raise typer.Exit(code=2)
     if format is FormatChoice.sarif:
         err_console.print("[red]Error:[/red] --format sarif is not supported for flow.")

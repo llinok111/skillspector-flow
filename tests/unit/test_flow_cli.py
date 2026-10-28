@@ -33,9 +33,7 @@ def write_skill(root: Path, name: str, body: str) -> Path:
     """Create ``root/name/SKILL.md`` and return the directory."""
     skill = root / name
     skill.mkdir(parents=True)
-    (skill / "SKILL.md").write_text(
-        MANIFEST.format(name=name) + body, encoding="utf-8"
-    )
+    (skill / "SKILL.md").write_text(MANIFEST.format(name=name) + body, encoding="utf-8")
     return skill
 
 
