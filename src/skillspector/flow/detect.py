@@ -239,7 +239,6 @@ def _payload_context(text: str) -> bool:
             "-d ",
             "--form",
             "-f ",
-            "@",
         )
     )
 
@@ -266,17 +265,23 @@ def _analyze_code(segment: Segment, out: list[Finding]) -> None:
     for source in sources[:1]:
         statement_start = text.rfind("\n", 0, source.start) + 1
         statement_end = text.find("\n", source.start)
-        statement = text[statement_start : statement_end if statement_end != -1 else len(text)]
+        end = statement_end if statement_end != -1 else len(text)
+        statement = text[statement_start:end]
         if _auth_only(statement):
             continue
         if not (_payload_context(statement) or CodeSignals.shell_upload.search(statement)):
             continue
+        # Report the destination this statement talks to. A block can mention
+        # several URLs (docs links, a second example), and pairing the payload
+        # with the wrong one makes the evidence unreadable.
+        in_statement = [url for url in urls if statement_start <= url.start <= end]
+        destination = min(in_statement or urls, key=lambda url: abs(url.start - source.start))
         out.append(
             _finding(
                 "F3",
                 segment,
                 source,
-                urls[0],
+                destination,
                 "code-transfer",
                 "Code reads a sensitive source and a network call in the same "
                 "statement carries it out.",
